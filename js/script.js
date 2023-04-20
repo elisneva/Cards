@@ -1,6 +1,8 @@
 import { createHeader } from "./components/createHeader.js";
-import { fetchCategories } from "./service/api.service.js";
+import { fetchCards, fetchCategories } from "./service/api.service.js";
 import { createCategory } from "./components/createCategory.js";
+import { createEditCategory } from "./components/createEditCategory.js";
+import { createPairs } from "./components/createPairs.js";
 
 const init = async () => {
     //get elements from the page
@@ -9,12 +11,19 @@ const init = async () => {
 
     const headerObj = createHeader(headerParent);
     const categoryObj = createCategory(app);
-    
+    const editCategoryObj = createEditCategory(app);
+    const pairsObj = createPairs(app);
+
+    const allSectionUnmount = () => {
+        [categoryObj, editCategoryObj, pairsObj].forEach(obj => obj.unmount());
+    }
     //quitar # cuando renovamos la pagina y cursor esta en logo
     const returnIndex = async e => {
-        e?.preventDefault()
+        e?.preventDefault();
+        allSectionUnmount();
         //асинк в ините/returnIndex поэтому эвейт тут, чтобы получать сразу массив
         const categories = await fetchCategories();
+        headerObj.updateHeaderTitle('Category');
         if (categories.error) {
             app.append(createElement('p', {
                 className: 'server-error',
@@ -30,10 +39,32 @@ const init = async () => {
     headerObj.headerLogoLink.addEventListener('click', returnIndex);
     //when we stand in the main Category when we go to smth and return to main Category
     headerObj.headerBtn.addEventListener('click', () => {
-    categoryObj.unmount();
+        allSectionUnmount();
         headerObj.updateHeaderTitle('New Category');
+        editCategoryObj.mount();
     });
-    //function for header, rellenar los elementos para header, al dentro se crea los children
+    
+    categoryObj.categoryList.addEventListener('click', async ({ target }) => {
+        const categoryItem = target.closest('.category__item');
+        if (target.closest('.category__edit')) {
+            const dataCards = await fetchCards(categoryItem.dataset.id);
+            allSectionUnmount();
+            headerObj.updateHeaderTitle('Edit');
+            editCategoryObj.mount(dataCards);
+            return;
+        }
+        if (target.closest('.category__del')) {
+            return;
+        }
+        if (categoryItem) {
+            const dataCards = await fetchCards(categoryItem.dataset.id);
+            allSectionUnmount();
+            headerObj.updateHeaderTitle(dataCards.title);
+            pairsObj.mount(dataCards);
+        }
+    });
+
+    pairsObj.btnReturn.addEventListener('click', returnIndex);
     
 };
 
