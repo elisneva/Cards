@@ -1,8 +1,9 @@
 import { createHeader } from "./components/createHeader.js";
-import { fetchCards, fetchCategories } from "./service/api.service.js";
+import { fetchCards, fetchCategories, fetchCreateCategory, fetchDeleteCategory, fetchEditCategory } from "./service/api.service.js";
 import { createCategory } from "./components/createCategory.js";
 import { createEditCategory } from "./components/createEditCategory.js";
 import { createPairs } from "./components/createPairs.js";
+import { showAlert } from "./components/showAlert.js";
 
 const init = async () => {
     //get elements from the page
@@ -16,6 +17,30 @@ const init = async () => {
 
     const allSectionUnmount = () => {
         [categoryObj, editCategoryObj, pairsObj].forEach(obj => obj.unmount());
+    }
+    const postHandler = async () => {
+        const data = editCategoryObj.parseData();
+        const dataCategories = await fetchCreateCategory(data);
+        if (dataCategories.error) {
+            showAlert(dataCategories.error.message);
+            return;
+        }
+        showAlert(`New Category ${data.title} added`);
+        allSectionUnmount();
+        headerObj.updateHeaderTitle('Category');
+        categoryObj.mount(dataCategories);
+    }
+    const patchHandler = async () => {
+        const data = editCategoryObj.parseData();
+        const dataCategories = await fetchEditCategory(editCategoryObj.btnSave.dataset.id, data);
+        if (dataCategories.error) {
+            showAlert(dataCategories.error.message);
+            return;
+        }
+        showAlert(`Category ${data.title} updated`);
+        allSectionUnmount();
+        headerObj.updateHeaderTitle('Category');
+        categoryObj.mount(dataCategories);
     }
     //quitar # cuando renovamos la pagina y cursor esta en logo
     const returnIndex = async e => {
@@ -42,6 +67,8 @@ const init = async () => {
         allSectionUnmount();
         headerObj.updateHeaderTitle('New Category');
         editCategoryObj.mount();
+        editCategoryObj.btnSave.addEventListener('click', postHandler);
+        editCategoryObj.btnSave.removeEventListener('click', patchHandler);
     });
     
     categoryObj.categoryList.addEventListener('click', async ({ target }) => {
@@ -51,9 +78,21 @@ const init = async () => {
             allSectionUnmount();
             headerObj.updateHeaderTitle('Edit');
             editCategoryObj.mount(dataCards);
+            editCategoryObj.btnSave.addEventListener('click', patchHandler);
+            editCategoryObj.btnSave.removeEventListener('click', postHandler);
             return;
         }
         if (target.closest('.category__del')) {
+            if (confirm('Are you sure to want delete this category?')) {
+                const result = fetchDeleteCategory(categoryItem.dataset.id);
+                if (result.error) {
+                    showAlert(result.error.message);
+                    return
+                }
+                showAlert('Deleted');
+                categoryItem.remove();
+            }
+            
             return;
         }
         if (categoryItem) {
